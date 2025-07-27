@@ -18,6 +18,14 @@ import {
   useUser,
 } from '@clerk/clerk-react';
 
+type Data = {
+  user: {
+    id: string;
+    username: string;
+  };
+  message: string;
+};
+
 function App() {
   const [messages, setMessages] = useState<string[]>(['test message']);
   const [input, setInput] = useState('');
@@ -33,7 +41,7 @@ function App() {
     };
     ws.onmessage = (e) => {
       console.log('Received message:', e.data);
-      setMessages((prevMessages) => [...prevMessages, e.data]);
+      // setMessages((prevMessages) => [...prevMessages, e.data]);
     };
 
     // set dark mode
@@ -43,10 +51,21 @@ function App() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isSignedIn || !user) {
+      console.error('User is not signed in');
+      return;
+    }
     if (input.trim() === '') return;
 
     if (socketRef.current) {
-      socketRef.current.send(input);
+      const data: Data = {
+        user: {
+          id: user.id,
+          username: user.username || 'Anonymous',
+        },
+        message: input,
+      };
+      socketRef.current.send(JSON.stringify(data));
       setInput('');
     }
 

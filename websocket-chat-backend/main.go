@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +18,14 @@ type Server struct {
 type App struct {
 	server Server
 	db 	 *sql.DB
+}
+
+type Data struct {
+	User struct { 
+		ID       string `json:"id"`
+		Username string `json:"username"`
+	} `json:"user"`
+	Message string `json:"message"`
 }
 
 func newServer() *Server {
@@ -42,13 +51,20 @@ func (app *App) readLoop(ws *websocket.Conn) {
 			fmt.Println("Error reading from websocket:", err)
 			continue
 		}
-		msg := buf[:n]
-		fmt.Println("Received message:", string(msg))
+
+		var data Data
+		if err := json.Unmarshal(buf[:n], &data); err != nil {
+			fmt.Println("Error unmarshalling JSON:", err)
+			continue
+		}
+
+
+		fmt.Println("Received data:", data)
 
 		// app.db.Exec("INSERT INTO messages (content) VALUES (?)", string(msg))
-		
 
-		app.server.broadcast(msg)
+		encoded, _ := json.Marshal(data)
+		app.server.broadcast(encoded)
 	}
 
 }
