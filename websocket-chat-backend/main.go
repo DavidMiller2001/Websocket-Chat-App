@@ -1,15 +1,22 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
 
+	_ "github.com/mattn/go-sqlite3" // SQLite driver
 	"golang.org/x/net/websocket"
 )
 
 type Server struct {
 	conns map[*websocket.Conn]bool
+}
+
+type App struct {
+	server Server
+	db 	 *sql.DB
 }
 
 func newServer() *Server {
@@ -18,13 +25,13 @@ func newServer() *Server {
 	}
 }
 
-func (s *Server) handleWS(ws *websocket.Conn) {
+func (app *App) handleWS(ws *websocket.Conn) {
 	fmt.Println("New incoming connection from client: ", ws.RemoteAddr())
-	s.conns[ws] = true
-	s.readLoop(ws)
+	app.server.conns[ws] = true
+	app.readLoop(ws)
 }
 
-func (s *Server) readLoop(ws *websocket.Conn) {
+func (app *App) readLoop(ws *websocket.Conn) {
 	buf := make([]byte, 1024)
 	for {
 		n, err := ws.Read(buf)
@@ -37,7 +44,11 @@ func (s *Server) readLoop(ws *websocket.Conn) {
 		}
 		msg := buf[:n]
 		fmt.Println("Received message:", string(msg))
-		s.broadcast(msg)
+
+		// app.db.Exec("INSERT INTO messages (content) VALUES (?)", string(msg))
+		
+
+		app.server.broadcast(msg)
 	}
 
 }
@@ -52,7 +63,46 @@ func (s *Server) broadcast(b []byte) {
 	}
 }
 func main() {
+	db, err := sql.Open("sqlite3", "./db.sqlite")
+	if err != nil {
+		panic(err)
+	}
+
+	createUsersTable := `
+	CREATE TABLE IF NOT EXISTS users(
+		id INTEGER PRIMARY KEY,
+		username TEXT NOT NULL UNIQUE
+	);
+	`
+
+	createMessagesTable := `
+	CREATE TABLE IF NOT EXISTS messages(
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		author_id INTEGER,
+		content TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (author_id) REFERENCES users(id)
+	);
+	`
+	_, err = db.Exec(createUsersTable)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = db.Exec(createMessagesTable)
+	if err != nil {
+		panic(err)
+	}
+		
 	server := newServer()
-	http.Handle("/ws", websocket.Handler(server.handleWS))
+
+	app := &App{
+		server: *server,
+		db:     db,
+	}
+
+	http.Handle("/ws", websocket.Handler(app.handleWS))
 	http.ListenAndServe(":8080", nil)
+
+	db.Close()
 }

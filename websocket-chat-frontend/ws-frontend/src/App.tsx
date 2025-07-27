@@ -26,15 +26,15 @@ function App() {
   const { user, isSignedIn } = useUser();
 
   useEffect(() => {
-    // const ws = new WebSocket('ws://localhost:8080/ws');
-    // socketRef.current = ws;
-    // ws.onopen = () => {
-    //   console.log('WebSocket connection established');
-    // };
-    // ws.onmessage = (e) => {
-    //   console.log('Received message:', e.data);
-    //   setMessages((prevMessages) => [...prevMessages, e.data]);
-    // };
+    const ws = new WebSocket('ws://localhost:8080/ws');
+    socketRef.current = ws;
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+    };
+    ws.onmessage = (e) => {
+      console.log('Received message:', e.data);
+      setMessages((prevMessages) => [...prevMessages, e.data]);
+    };
 
     // set dark mode
     const root = window.document.documentElement;
@@ -45,14 +45,14 @@ function App() {
     e.preventDefault();
     if (input.trim() === '') return;
 
-    // if (socketRef.current) {
-    //   socketRef.current.send(input);
-    //   setInput('');
-    // }
+    if (socketRef.current) {
+      socketRef.current.send(input);
+      setInput('');
+    }
 
     // Pushing input directly to messages for demo purposes
-    setMessages((prevMessages) => [...prevMessages, input]);
-    setInput('');
+    // setMessages((prevMessages) => [...prevMessages, input]);
+    // setInput('');
   }
 
   return (
