@@ -24,24 +24,47 @@ type Data = {
     username: string;
   };
   message: string;
+  createdAt?: string; // Optional field for createdAt
 };
 
 function App() {
-  const [messages, setMessages] = useState<string[]>(['test message']);
+  const [messages, setMessages] = useState<Data[]>([]);
   const [input, setInput] = useState('');
   const socketRef = useRef<WebSocket | null>(null);
 
   const { user, isSignedIn } = useUser();
 
+  const fetchData = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/messages', {
+        method: 'GET',
+        headers: {
+          'Content-type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data: Data[] = await response.json();
+      setMessages(data);
+    } catch (err) {
+      console.error('Error fetching messages:', err);
+    }
+  };
+
   useEffect(() => {
+    // Fetch initial messages from the backend
+    fetchData();
+
+    // Establish WebSocket connection
     const ws = new WebSocket('ws://localhost:8080/ws');
     socketRef.current = ws;
     ws.onopen = () => {
       console.log('WebSocket connection established');
     };
-    ws.onmessage = (e) => {
-      console.log('Received message:', e.data);
-      // setMessages((prevMessages) => [...prevMessages, e.data]);
+    ws.onmessage = () => {
+      fetchData();
     };
 
     // set dark mode
@@ -124,10 +147,8 @@ function App() {
                   {messages.map((message, index) => (
                     <li key={index}>
                       <Message
-                        message={message}
-                        authorId={
-                          index % 2 === 1 ? (user ? user.id : 'me') : 'other'
-                        }
+                        message={message.message}
+                        authorId={message.user.id || 'Anonymous'}
                       />
                     </li>
                   ))}
