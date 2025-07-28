@@ -144,14 +144,15 @@ function App() {
                   </Button>
                 </form>
                 <ul className='flex flex-col gap-4'>
-                  {messages.map((message, index) => (
-                    <li key={index}>
-                      <Message
-                        message={message.message}
-                        authorId={message.user.id || 'Anonymous'}
-                      />
-                    </li>
-                  ))}
+                  {messages &&
+                    messages.map((message, index) => (
+                      <li key={index}>
+                        <Message
+                          message={message.message}
+                          username={message.user.id}
+                        />
+                      </li>
+                    ))}
                 </ul>
               </div>
             </CardContent>
@@ -161,14 +162,18 @@ function App() {
     </>
   );
 
-  function Message(props: { message: string; authorId: string }) {
-    const { message, authorId } = props;
+  function Message(props: { message: string; username: string }) {
+    const { message, username } = props;
+
+    console.log(
+      `username from db: ${username}. User id from clerk: ${user?.username}`
+    );
 
     let additionalClasses =
       'justify-self-end bg-primary text-primary-foreground flex-row-reverse';
 
     if (isSignedIn && user) {
-      if (authorId === user.id) {
+      if (username === user.username) {
         additionalClasses = 'justify-self-start bg-indigo-600 text-white';
       }
     }
@@ -179,8 +184,8 @@ function App() {
       >
         <Avatar className='self-start'>
           <AvatarImage
-            src='https://github.com/davidmiller2001.png'
-            alt='@davidmiller2001'
+            src={user?.imageUrl || 'github.com/davidmiller2001.png'}
+            alt={`@${user ? user.username : 'Anonymous'}`}
           />
           <AvatarFallback>DM</AvatarFallback>
         </Avatar>

@@ -66,11 +66,8 @@ func (app *App) readLoop(ws *websocket.Conn) {
 		fmt.Println("Received data:", data)
 
 		// Create user if it doesn't exist
-		userExists, err := userExists(app.db, data.User.ID)
-		if err != nil {
-			fmt.Println("Error checking if user exists:", err)
-			continue
-		}
+		userExists := userExists(app.db, data.User.ID)
+
 		if !userExists {
 			app.db.Exec("INSERT INTO users (id, username) VALUES (?, ?)", data.User.ID, data.User.Username)
 		}
@@ -83,11 +80,16 @@ func (app *App) readLoop(ws *websocket.Conn) {
 
 }
 
-func userExists(db *sql.DB, id string) (bool, error) {
-	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM users WHERE id = ? LIMIT 1)`
-	err := db.QueryRow(query, id).Scan(&exists)
-	return exists, err
+func userExists(db *sql.DB, id string) (bool) {
+	var username string
+	exists := true
+	err := db.QueryRow(`SELECT username from users WHERE id = ?`, id).Scan(&username)
+
+	if err != nil {
+		exists = false
+	}
+
+	return exists
 }
 
 func (s *Server) broadcast(b []byte) {
@@ -103,7 +105,7 @@ func (s *Server) broadcast(b []byte) {
 func (app *App) handleMessages(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	rows, err := app.db.Query(`SELECT id, author_id, content, created_at FROM messages`)
+	rows, err := app.db.Query(`SELECT author_id, content, created_at FROM messages`)
 	if err != nil {
 		http.Error(w, "Error querying messages", http.StatusInternalServerError)
 		return
@@ -117,15 +119,28 @@ func (app *App) handleMessages(w http.ResponseWriter, r *http.Request) {
 		var message string
 		var createdAt string
 
-		if err := rows.Scan(&user.ID, &user.Username, &message, &createdAt); err != nil {
+		var userId string
+		var username string
+
+		if err := rows.Scan(&userId, &message, &createdAt); err != nil {
 			http.Error(w, "Error scanning message row", http.StatusInternalServerError)
 			return
+		}
+
+		err := app.db.QueryRow("SELECT username FROM users WHERE id = ? LIMIT 1", userId).Scan(&username)
+		if err != nil {
+			fmt.Println("Error querying user data: ", err)
+		}
+		user = User{
+			ID: userId,
+			Username: username,
 		}
 		messageData = append(messageData, Data{
 			User:    user,
 			Message: message,
 			CreatedAt: createdAt,
 		})
+		fmt.Println(messageData[0])
 	}
 
 	if err := rows.Err(); err != nil {
@@ -149,8 +164,8 @@ func connectToDb() (*sql.DB, error) {
 	var returnError error
 	createUsersTable := `
 	CREATE TABLE IF NOT EXISTS users(
-		id INTEGER PRIMARY KEY,
-		username TEXT NOT NULL UNIQUE
+		id TEXT PRIMARY KEY,
+		username TEXT NOT NULL
 		);
 		`
 	createMessagesTable := `
@@ -197,7 +212,6 @@ func main() {
 	router := mux.NewRouter()
 	router.Handle("/ws", websocket.Handler(app.handleWS))
 	router.HandleFunc("/api/messages", app.handleMessages).Methods("GET")
-	// http.HandleFunc("/api/messages", app.handleMessages)
 	http.ListenAndServe(":8080",
 	 handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
