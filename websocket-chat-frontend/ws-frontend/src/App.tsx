@@ -34,6 +34,7 @@ function App() {
   const socketRef = useRef<WebSocket | null>(null);
 
   const { user, isSignedIn } = useUser();
+  console.log(user);
 
   const fetchData = async () => {
     try {
@@ -85,7 +86,7 @@ function App() {
       const data: Data = {
         user: {
           id: user.id,
-          username: user.username || 'Anonymous',
+          username: user.username || user.fullName || 'Anonymous',
           imageUrl: user.imageUrl,
         },
         message: input,
@@ -169,15 +170,22 @@ function App() {
   }) {
     const { message, username, imageUrl } = props;
 
-    console.log('image url from message: ', imageUrl);
-
     let additionalClasses = 'justify-self-start bg-indigo-600 text-white';
 
+    let messageFromCurrentUserFlag = false;
+
+    // Compare the clerk username if it exists, compare the clerk full name otherwise
     if (isSignedIn && user) {
-      if (username === user.username) {
-        additionalClasses =
-          'justify-self-end bg-primary text-primary-foreground flex-row-reverse';
+      if (!user.username) {
+        messageFromCurrentUserFlag = username === user.fullName;
+      } else {
+        messageFromCurrentUserFlag = username === user.username;
       }
+    }
+
+    if (messageFromCurrentUserFlag) {
+      additionalClasses =
+        'justify-self-end bg-primary text-primary-foreground flex-row-reverse';
     }
 
     // FIXME: figure out why the avatar images are behaving weird and the logic for determining messages from self or a guest also seems to be janky.
@@ -191,7 +199,9 @@ function App() {
             src={imageUrl}
             alt={`@${user ? user.username : 'Anonymous'}`}
           />
-          <AvatarFallback className='text-white'>DM</AvatarFallback>
+          <AvatarFallback className='text-white'>
+            {username.toUpperCase().charAt(0)}
+          </AvatarFallback>
         </Avatar>
         <p>{message}</p>
       </div>

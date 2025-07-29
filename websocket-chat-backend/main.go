@@ -25,7 +25,7 @@ type App struct {
 type User struct {
 	ID 		 string `json:"id"`
 	Username string `json:"username"`
-	ImageUrl string `json:"image_url"`
+	ImageUrl string `json:"imageUrl"`
 }
 
 type Data struct {
@@ -64,7 +64,7 @@ func (app *App) readLoop(ws *websocket.Conn) {
 			continue
 		}
 
-		fmt.Println("Received data:", data)
+		// fmt.Println("Received data:", data)
 
 		// Create user if it doesn't exist
 		userExists := userExists(app.db, data.User.ID)
