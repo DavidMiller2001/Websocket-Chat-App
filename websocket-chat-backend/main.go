@@ -25,6 +25,7 @@ type App struct {
 type User struct {
 	ID 		 string `json:"id"`
 	Username string `json:"username"`
+	ImageUrl string `json:"image_url"`
 }
 
 type Data struct {
@@ -69,7 +70,7 @@ func (app *App) readLoop(ws *websocket.Conn) {
 		userExists := userExists(app.db, data.User.ID)
 
 		if !userExists {
-			app.db.Exec("INSERT INTO users (id, username) VALUES (?, ?)", data.User.ID, data.User.Username)
+			app.db.Exec("INSERT INTO users (id, username, image_url) VALUES (?, ?, ?)", data.User.ID, data.User.Username, data.User.ImageUrl)
 		}
 
 		app.db.Exec("INSERT INTO messages (author_id,  content) VALUES (?, ?)", data.User.ID, data.Message)
@@ -118,29 +119,32 @@ func (app *App) handleMessages(w http.ResponseWriter, r *http.Request) {
 		var user User
 		var message string
 		var createdAt string
-
+		
 		var userId string
 		var username string
+		var imageUrl string
 
+		
 		if err := rows.Scan(&userId, &message, &createdAt); err != nil {
 			http.Error(w, "Error scanning message row", http.StatusInternalServerError)
 			return
 		}
 
-		err := app.db.QueryRow("SELECT username FROM users WHERE id = ? LIMIT 1", userId).Scan(&username)
+		err := app.db.QueryRow("SELECT username, image_url FROM users WHERE id = ? LIMIT 1", userId).Scan(&username, &imageUrl)
+
 		if err != nil {
 			fmt.Println("Error querying user data: ", err)
 		}
 		user = User{
 			ID: userId,
 			Username: username,
+			ImageUrl: imageUrl,
 		}
 		messageData = append(messageData, Data{
 			User:    user,
 			Message: message,
 			CreatedAt: createdAt,
 		})
-		fmt.Println(messageData[0])
 	}
 
 	if err := rows.Err(); err != nil {
@@ -165,7 +169,8 @@ func connectToDb() (*sql.DB, error) {
 	createUsersTable := `
 	CREATE TABLE IF NOT EXISTS users(
 		id TEXT PRIMARY KEY,
-		username TEXT NOT NULL
+		username TEXT NOT NULL,
+		image_url TEXT
 		);
 		`
 	createMessagesTable := `

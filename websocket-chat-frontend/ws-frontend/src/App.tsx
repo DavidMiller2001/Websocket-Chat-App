@@ -22,6 +22,7 @@ type Data = {
   user: {
     id: string;
     username: string;
+    imageUrl?: string;
   };
   message: string;
   createdAt?: string; // Optional field for createdAt
@@ -85,16 +86,14 @@ function App() {
         user: {
           id: user.id,
           username: user.username || 'Anonymous',
+          imageUrl: user.imageUrl,
         },
         message: input,
       };
+      console.log(data);
       socketRef.current.send(JSON.stringify(data));
       setInput('');
     }
-
-    // Pushing input directly to messages for demo purposes
-    // setMessages((prevMessages) => [...prevMessages, input]);
-    // setInput('');
   }
 
   return (
@@ -149,7 +148,8 @@ function App() {
                       <li key={index}>
                         <Message
                           message={message.message}
-                          username={message.user.id}
+                          username={message.user.username}
+                          imageUrl={message.user.imageUrl || ''}
                         />
                       </li>
                     ))}
@@ -162,21 +162,25 @@ function App() {
     </>
   );
 
-  function Message(props: { message: string; username: string }) {
-    const { message, username } = props;
+  function Message(props: {
+    message: string;
+    username: string;
+    imageUrl: string;
+  }) {
+    const { message, username, imageUrl } = props;
 
-    console.log(
-      `username from db: ${username}. User id from clerk: ${user?.username}`
-    );
+    console.log('image url from message: ', imageUrl);
 
-    let additionalClasses =
-      'justify-self-end bg-primary text-primary-foreground flex-row-reverse';
+    let additionalClasses = 'justify-self-start bg-indigo-600 text-white';
 
     if (isSignedIn && user) {
       if (username === user.username) {
-        additionalClasses = 'justify-self-start bg-indigo-600 text-white';
+        additionalClasses =
+          'justify-self-end bg-primary text-primary-foreground flex-row-reverse';
       }
     }
+
+    // FIXME: figure out why the avatar images are behaving weird and the logic for determining messages from self or a guest also seems to be janky.
 
     return (
       <div
@@ -184,10 +188,10 @@ function App() {
       >
         <Avatar className='self-start'>
           <AvatarImage
-            src={user?.imageUrl || 'github.com/davidmiller2001.png'}
+            src={imageUrl}
             alt={`@${user ? user.username : 'Anonymous'}`}
           />
-          <AvatarFallback>DM</AvatarFallback>
+          <AvatarFallback className='text-white'>DM</AvatarFallback>
         </Avatar>
         <p>{message}</p>
       </div>
