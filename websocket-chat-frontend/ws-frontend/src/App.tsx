@@ -25,7 +25,7 @@ type Data = {
     imageUrl?: string;
   };
   message: string;
-  createdAt?: string; // Optional field for createdAt
+  createdAt?: string;
 };
 
 function App() {
@@ -34,7 +34,6 @@ function App() {
   const socketRef = useRef<WebSocket | null>(null);
 
   const { user, isSignedIn } = useUser();
-  console.log(user);
 
   const fetchData = async () => {
     try {
@@ -65,6 +64,7 @@ function App() {
     ws.onopen = () => {
       console.log('WebSocket connection established');
     };
+    // We refetch our data every time a message is received which is super unopitmal but it works for the purpose of the demo
     ws.onmessage = () => {
       fetchData();
     };
@@ -170,6 +170,7 @@ function App() {
   }) {
     const { message, username, imageUrl } = props;
 
+    // Styles messages for other users
     let additionalClasses = 'justify-self-start bg-indigo-600 text-white';
 
     let messageFromCurrentUserFlag = false;
@@ -184,11 +185,10 @@ function App() {
     }
 
     if (messageFromCurrentUserFlag) {
+      // Styles messages sent from the current user
       additionalClasses =
         'justify-self-end bg-primary text-primary-foreground flex-row-reverse';
     }
-
-    // FIXME: figure out why the avatar images are behaving weird and the logic for determining messages from self or a guest also seems to be janky.
 
     return (
       <div
