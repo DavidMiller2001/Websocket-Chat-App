@@ -48,7 +48,8 @@ function App() {
       }
 
       const data: Data[] = await response.json();
-      setMessages(data);
+      // Only tries to set message state if data exists
+      setMessages(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching messages:', err);
     }
@@ -64,9 +65,11 @@ function App() {
     ws.onopen = () => {
       console.log('WebSocket connection established');
     };
-    // We refetch our data every time a message is received which is super unopitmal but it works for the purpose of the demo
-    ws.onmessage = () => {
-      fetchData();
+
+    ws.onmessage = (e) => {
+      const data: Data = JSON.parse(e.data);
+
+      setMessages((prev) => [...prev, data]);
     };
 
     // set dark mode
@@ -91,7 +94,6 @@ function App() {
         },
         message: input,
       };
-      console.log(data);
       socketRef.current.send(JSON.stringify(data));
       setInput('');
     }
@@ -170,7 +172,7 @@ function App() {
   }) {
     const { message, username, imageUrl } = props;
 
-    // Styles messages for other users
+    // Styles messages for other users by default
     let additionalClasses = 'justify-self-start bg-indigo-600 text-white';
 
     let messageFromCurrentUserFlag = false;
